@@ -167,20 +167,31 @@ MCP enables the AI to use external tools and access various data sources through
 
 MCP is Anthropic's open protocol that allows AI assistants to securely connect to external tools and data sources. Think of it as giving your AI access to a toolbox of specialized capabilities.
 
-### Enabling MCP
+### Default Configuration
 
-1. Set the environment variable:
+**MCP is enabled by default** when using the Anthropic provider! The following servers are automatically available:
+- **Filesystem Server** - Read/write files in the current directory
+- **Git Server** - Query git repository information
+
+No additional configuration needed - just set your API key and you're ready to go!
+
+### Disabling Default Servers
+
+To disable specific servers:
 ```bash
-export ENABLE_MCP=true
+export MCP_FILESYSTEM_ENABLED=false  # Disable file operations
+export MCP_GIT_ENABLED=false         # Disable git operations
 ```
 
-2. Configure MCP servers (choose one method):
-
-**Method A: Quick Enable (Built-in servers)**
+To disable MCP entirely:
 ```bash
-export MCP_FILESYSTEM_ENABLED=true  # File operations
-export MCP_GIT_ENABLED=true         # Git operations
+export ENABLE_MCP=false
 ```
+
+### Adding Custom MCP Servers
+
+**Method A: Environment Variables (Quick)**
+Add additional servers alongside the defaults - filesystem and git remain active.
 
 **Method B: Custom Configuration File**
 

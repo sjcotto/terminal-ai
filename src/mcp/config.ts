@@ -33,11 +33,11 @@ export async function loadMCPConfig(): Promise<MCPConfig> {
 }
 
 export function getDefaultMCPServers(): MCPServerConfig[] {
-  // Some commonly useful MCP servers with standard configurations
   const defaultServers: MCPServerConfig[] = [];
 
-  // Filesystem server (if available)
-  if (process.env.MCP_FILESYSTEM_ENABLED === 'true') {
+  // Filesystem server - allows AI to read/write files in current directory
+  // Only disabled if explicitly set to false
+  if (process.env.MCP_FILESYSTEM_ENABLED !== 'false') {
     defaultServers.push({
       name: 'filesystem',
       command: 'npx',
@@ -45,8 +45,9 @@ export function getDefaultMCPServers(): MCPServerConfig[] {
     });
   }
 
-  // Git server (if available)
-  if (process.env.MCP_GIT_ENABLED === 'true') {
+  // Git server - allows AI to query git repository information
+  // Only disabled if explicitly set to false
+  if (process.env.MCP_GIT_ENABLED !== 'false') {
     defaultServers.push({
       name: 'git',
       command: 'npx',

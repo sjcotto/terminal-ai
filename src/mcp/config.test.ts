@@ -87,37 +87,7 @@ describe('MCP Config', () => {
   });
 
   describe('getDefaultMCPServers', () => {
-    it('should return empty array when no env vars set', () => {
-      const servers = getDefaultMCPServers();
-      expect(servers).toEqual([]);
-    });
-
-    it('should include filesystem server when enabled', () => {
-      process.env.MCP_FILESYSTEM_ENABLED = 'true';
-
-      const servers = getDefaultMCPServers();
-
-      expect(servers).toHaveLength(1);
-      expect(servers[0].name).toBe('filesystem');
-      expect(servers[0].command).toBe('npx');
-      expect(servers[0].args).toContain('@modelcontextprotocol/server-filesystem');
-    });
-
-    it('should include git server when enabled', () => {
-      process.env.MCP_GIT_ENABLED = 'true';
-
-      const servers = getDefaultMCPServers();
-
-      expect(servers).toHaveLength(1);
-      expect(servers[0].name).toBe('git');
-      expect(servers[0].command).toBe('npx');
-      expect(servers[0].args).toContain('@modelcontextprotocol/server-git');
-    });
-
-    it('should include both servers when both enabled', () => {
-      process.env.MCP_FILESYSTEM_ENABLED = 'true';
-      process.env.MCP_GIT_ENABLED = 'true';
-
+    it('should return filesystem and git servers by default', () => {
       const servers = getDefaultMCPServers();
 
       expect(servers).toHaveLength(2);
@@ -125,9 +95,45 @@ describe('MCP Config', () => {
       expect(servers.map((s) => s.name)).toContain('git');
     });
 
-    it('should not include servers when env var is not "true"', () => {
+    it('should include filesystem server by default', () => {
+      const servers = getDefaultMCPServers();
+
+      const fsServer = servers.find((s) => s.name === 'filesystem');
+      expect(fsServer).toBeDefined();
+      expect(fsServer?.command).toBe('npx');
+      expect(fsServer?.args).toContain('@modelcontextprotocol/server-filesystem');
+    });
+
+    it('should include git server by default', () => {
+      const servers = getDefaultMCPServers();
+
+      const gitServer = servers.find((s) => s.name === 'git');
+      expect(gitServer).toBeDefined();
+      expect(gitServer?.command).toBe('npx');
+      expect(gitServer?.args).toContain('@modelcontextprotocol/server-git');
+    });
+
+    it('should exclude filesystem server when explicitly disabled', () => {
       process.env.MCP_FILESYSTEM_ENABLED = 'false';
-      process.env.MCP_GIT_ENABLED = '1';
+
+      const servers = getDefaultMCPServers();
+
+      expect(servers).toHaveLength(1);
+      expect(servers[0].name).toBe('git');
+    });
+
+    it('should exclude git server when explicitly disabled', () => {
+      process.env.MCP_GIT_ENABLED = 'false';
+
+      const servers = getDefaultMCPServers();
+
+      expect(servers).toHaveLength(1);
+      expect(servers[0].name).toBe('filesystem');
+    });
+
+    it('should exclude both servers when both explicitly disabled', () => {
+      process.env.MCP_FILESYSTEM_ENABLED = 'false';
+      process.env.MCP_GIT_ENABLED = 'false';
 
       const servers = getDefaultMCPServers();
 
@@ -144,27 +150,25 @@ describe('MCP Config', () => {
       (existsSync as any).mockReturnValue(true);
       (readFile as any).mockResolvedValue(JSON.stringify(mockConfig));
 
-      process.env.MCP_FILESYSTEM_ENABLED = 'true';
+      const servers = await getMCPServers();
+
+      expect(servers).toHaveLength(3);
+      expect(servers.map((s) => s.name)).toContain('custom-server');
+      expect(servers.map((s) => s.name)).toContain('filesystem');
+      expect(servers.map((s) => s.name)).toContain('git');
+    });
+
+    it('should return defaults when no config file', async () => {
+      (existsSync as any).mockReturnValue(false);
 
       const servers = await getMCPServers();
 
       expect(servers).toHaveLength(2);
-      expect(servers.map((s) => s.name)).toContain('custom-server');
       expect(servers.map((s) => s.name)).toContain('filesystem');
+      expect(servers.map((s) => s.name)).toContain('git');
     });
 
-    it('should return only defaults when no config file', async () => {
-      (existsSync as any).mockReturnValue(false);
-
-      process.env.MCP_GIT_ENABLED = 'true';
-
-      const servers = await getMCPServers();
-
-      expect(servers).toHaveLength(1);
-      expect(servers[0].name).toBe('git');
-    });
-
-    it('should return only config when no defaults enabled', async () => {
+    it('should return config plus defaults', async () => {
       const mockConfig = {
         servers: [
           { name: 'server1', command: 'cmd1' },
@@ -177,16 +181,28 @@ describe('MCP Config', () => {
 
       const servers = await getMCPServers();
 
-      expect(servers).toHaveLength(2);
-      expect(servers).toEqual(mockConfig.servers);
+      expect(servers).toHaveLength(4);
+      expect(servers.map((s) => s.name)).toContain('server1');
+      expect(servers.map((s) => s.name)).toContain('server2');
+      expect(servers.map((s) => s.name)).toContain('filesystem');
+      expect(servers.map((s) => s.name)).toContain('git');
     });
 
-    it('should return empty array when no servers at all', async () => {
-      (existsSync as any).mockReturnValue(false);
+    it('should return only config when defaults are disabled', async () => {
+      const mockConfig = {
+        servers: [{ name: 'custom', command: 'cmd' }],
+      };
+
+      (existsSync as any).mockReturnValue(true);
+      (readFile as any).mockResolvedValue(JSON.stringify(mockConfig));
+
+      process.env.MCP_FILESYSTEM_ENABLED = 'false';
+      process.env.MCP_GIT_ENABLED = 'false';
 
       const servers = await getMCPServers();
 
-      expect(servers).toEqual([]);
+      expect(servers).toHaveLength(1);
+      expect(servers[0].name).toBe('custom');
     });
   });
 });
