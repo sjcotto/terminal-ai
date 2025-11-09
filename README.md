@@ -5,18 +5,22 @@ A CLI tool that transforms your terminal experience by letting you talk to AI in
 ## ✨ Features
 
 - **Natural Language Interface**: Describe what you want to do instead of remembering complex commands
-- **AI-Powered Command Generation**: Uses Claude AI to understand your intent and generate appropriate commands
+- **Multiple AI Providers**: Choose between cloud (Anthropic Claude) or local (Ollama) AI models
+- **AI-Powered Command Generation**: Uses advanced AI to understand your intent and generate appropriate commands
 - **Safety First**: Shows you the command before execution and asks for confirmation
 - **Context Aware**: Understands your current directory and system environment
 - **Conversation History**: Maintains context across your session for follow-up requests
 - **Danger Detection**: Warns you when commands might modify or delete files
+- **Privacy Options**: Run completely offline with Ollama for full data privacy
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 
-- Node.js 18+ (or Bun runtime)
-- An Anthropic API key ([get one here](https://console.anthropic.com/))
+- Node.js 18+
+- **Choose one AI provider:**
+  - **Anthropic Claude** (cloud): An Anthropic API key ([get one here](https://console.anthropic.com/))
+  - **Ollama** (local): Ollama installed locally ([install from here](https://ollama.com/))
 
 ### Installation
 
@@ -31,7 +35,10 @@ cd terminal-ai
 npm install
 ```
 
-3. Set up your API key:
+3. **Choose your AI provider:**
+
+#### Option A: Using Anthropic Claude (Cloud)
+
 ```bash
 export ANTHROPIC_API_KEY="your-api-key-here"
 ```
@@ -39,7 +46,42 @@ export ANTHROPIC_API_KEY="your-api-key-here"
 Or create a `.env` file:
 ```bash
 cp .env.example .env
-# Edit .env and add your API key
+# Edit .env and add your ANTHROPIC_API_KEY
+```
+
+#### Option B: Using Ollama (Local)
+
+1. Install and start Ollama:
+```bash
+# Install Ollama from https://ollama.com/
+ollama serve
+```
+
+2. Pull a recommended model (Qwen 2.5 Coder 7B):
+```bash
+ollama pull qwen2.5-coder:7b
+```
+
+Or use the larger quantized model mentioned:
+```bash
+# Note: This is a custom GGUF model - you would need to import it into Ollama
+# Alternatively, use the standard qwen2.5-coder models:
+ollama pull qwen2.5-coder:7b
+ollama pull qwen2.5-coder:14b
+ollama pull qwen2.5-coder:32b
+```
+
+3. Configure to use Ollama:
+```bash
+export AI_PROVIDER="ollama"
+export OLLAMA_MODEL="qwen2.5-coder:7b"  # Optional, defaults to qwen2.5-coder:7b
+```
+
+Or add to `.env` file:
+```bash
+AI_PROVIDER=ollama
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=qwen2.5-coder:7b
 ```
 
 ### Usage
@@ -92,7 +134,24 @@ Execute this command? › Yes
 
 ### Environment Variables
 
-- `ANTHROPIC_API_KEY`: Your Anthropic API key (required)
+#### AI Provider Selection
+- `AI_PROVIDER`: Choose AI provider - `anthropic` or `ollama` (default: `anthropic`)
+
+#### Anthropic Configuration
+- `ANTHROPIC_API_KEY`: Your Anthropic API key (required when using Anthropic)
+
+#### Ollama Configuration
+- `OLLAMA_HOST`: Ollama server URL (default: `http://localhost:11434`)
+- `OLLAMA_MODEL`: Model to use (default: `qwen2.5-coder:7b`)
+
+#### Recommended Ollama Models
+
+For best results with terminal commands, use code-focused models:
+- `qwen2.5-coder:7b` - Fast and efficient (recommended)
+- `qwen2.5-coder:14b` - Better accuracy, slower
+- `qwen2.5-coder:32b` - Best accuracy, requires more resources
+- `codellama:7b` - Alternative code model
+- `deepseek-coder:6.7b` - Another good option
 
 ### Special Commands
 
@@ -104,22 +163,36 @@ Execute this command? › Yes
 ```
 terminal-ai/
 ├── src/
-│   ├── index.ts              # Entry point
+│   ├── index.ts                      # Entry point with provider selection
 │   ├── ai/
-│   │   ├── client.ts         # Claude API client
-│   │   └── client.test.ts    # AI client tests
+│   │   ├── provider.ts              # AI provider interface
+│   │   ├── anthropic-provider.ts    # Anthropic/Claude implementation
+│   │   ├── ollama-provider.ts       # Ollama implementation
+│   │   ├── factory.ts               # Provider factory
+│   │   ├── client.ts                # Re-exports for compatibility
+│   │   ├── client.test.ts           # Anthropic provider tests
+│   │   └── ollama-provider.test.ts  # Ollama provider tests
 │   ├── terminal/
-│   │   ├── prompt.ts         # Interactive prompt handler
-│   │   ├── prompt.test.ts    # Prompt tests
-│   │   ├── executor.ts       # Command executor
-│   │   └── executor.test.ts  # Executor tests
+│   │   ├── prompt.ts                # Interactive prompt handler
+│   │   ├── prompt.test.ts           # Prompt tests
+│   │   ├── executor.ts              # Command executor
+│   │   └── executor.test.ts         # Executor tests
 │   └── utils/
-│       ├── context.ts        # System context gathering
-│       └── context.test.ts   # Context tests
+│       ├── context.ts               # System context gathering
+│       └── context.test.ts          # Context tests
 ├── package.json
 ├── tsconfig.json
-└── vitest.config.ts          # Test configuration
+└── vitest.config.ts                 # Test configuration
 ```
+
+### Provider System
+
+The application uses a flexible provider system that supports multiple AI backends:
+
+- **AIProvider Interface**: Defines the contract for all AI providers
+- **AnthropicProvider**: Cloud-based using Claude Sonnet 4.5
+- **OllamaProvider**: Local inference with customizable models
+- **Factory Pattern**: Automatically creates the right provider based on configuration
 
 ## 🧪 Testing
 

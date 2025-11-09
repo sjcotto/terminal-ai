@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AIClient } from './client.js';
+import { AnthropicProvider } from './client.js';
 import Anthropic from '@anthropic-ai/sdk';
 
 // Mock the Anthropic SDK
@@ -11,20 +11,20 @@ vi.mock('@anthropic-ai/sdk', () => {
   return { default: MockAnthropic };
 });
 
-describe('AIClient', () => {
-  let aiClient: AIClient;
+describe('AnthropicProvider', () => {
+  let aiClient: AnthropicProvider;
   let mockCreate: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    aiClient = new AIClient('test-api-key');
+    aiClient = new AnthropicProvider('test-api-key');
     // Get reference to the mocked create method
     mockCreate = (Anthropic as any).mock.results[0].value.messages.create;
   });
 
   describe('constructor', () => {
     it('should create an instance with an API key', () => {
-      expect(aiClient).toBeInstanceOf(AIClient);
+      expect(aiClient).toBeInstanceOf(AnthropicProvider);
       expect(Anthropic).toHaveBeenCalledWith({ apiKey: 'test-api-key' });
     });
   });

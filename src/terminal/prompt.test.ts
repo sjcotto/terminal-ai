@@ -1,16 +1,15 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TerminalPrompt } from './prompt.js';
+import type { AIProvider } from '../ai/client.js';
 
 // Mock dependencies
 vi.mock('prompts');
 vi.mock('ora');
-vi.mock('../ai/client.js');
 vi.mock('./executor.js');
 vi.mock('../utils/context.js');
 
 import prompts from 'prompts';
 import ora from 'ora';
-import { AIClient } from '../ai/client.js';
 import { CommandExecutor } from './executor.js';
 import { getSystemContext } from '../utils/context.js';
 
@@ -19,6 +18,7 @@ describe('TerminalPrompt', () => {
   let mockSpinner: any;
   let consoleLogSpy: any;
   let consoleErrorSpy: any;
+  let mockAIProvider: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,12 +36,12 @@ describe('TerminalPrompt', () => {
     };
     (ora as any).mockReturnValue(mockSpinner);
 
-    // Mock AIClient
-    (AIClient as any).mockImplementation(() => ({
-      getCommandSuggestion: vi.fn(),
-      clearHistory: vi.fn(),
-      getHistory: vi.fn().mockReturnValue([]),
-    }));
+    // Create mock AI Provider
+    mockAIProvider = {
+      getCommandSuggestion: vi.fn() as any,
+      clearHistory: vi.fn() as any,
+      getHistory: vi.fn().mockReturnValue([]) as any,
+    };
 
     // Mock CommandExecutor
     (CommandExecutor as any).mockImplementation(() => ({
@@ -53,7 +53,7 @@ describe('TerminalPrompt', () => {
     // Mock getSystemContext
     (getSystemContext as any).mockResolvedValue('Test context');
 
-    terminalPrompt = new TerminalPrompt('test-api-key');
+    terminalPrompt = new TerminalPrompt(mockAIProvider);
   });
 
   afterEach(() => {
@@ -62,9 +62,8 @@ describe('TerminalPrompt', () => {
   });
 
   describe('constructor', () => {
-    it('should create an instance with API key', () => {
+    it('should create an instance with AIProvider', () => {
       expect(terminalPrompt).toBeInstanceOf(TerminalPrompt);
-      expect(AIClient).toHaveBeenCalledWith('test-api-key');
       expect(CommandExecutor).toHaveBeenCalled();
     });
   });
@@ -105,12 +104,13 @@ describe('TerminalPrompt', () => {
 
     it('should handle clear command', async () => {
       const mockClearHistory = vi.fn();
-      (AIClient as any).mockImplementation(() => ({
-        clearHistory: mockClearHistory,
-        getHistory: vi.fn().mockReturnValue([]),
-      }));
+      const mockProvider = {
+        clearHistory: mockClearHistory as any,
+        getHistory: vi.fn().mockReturnValue([]) as any,
+        getCommandSuggestion: vi.fn() as any,
+      };
 
-      terminalPrompt = new TerminalPrompt('test-api-key');
+      terminalPrompt = new TerminalPrompt(mockProvider as any);
 
       (prompts as any)
         .mockResolvedValueOnce({ input: 'clear' })
@@ -152,11 +152,9 @@ describe('TerminalPrompt', () => {
   });
 
   describe('handleUserRequest', () => {
-    let mockAIClient: any;
     let mockExecutor: any;
 
     beforeEach(() => {
-      mockAIClient = (AIClient as any).mock.results[0].value;
       mockExecutor = (CommandExecutor as any).mock.results[0].value;
     });
 
@@ -167,7 +165,7 @@ describe('TerminalPrompt', () => {
         dangerous: false,
       };
 
-      mockAIClient.getCommandSuggestion.mockResolvedValue(mockSuggestion);
+      mockAIProvider.getCommandSuggestion.mockResolvedValue(mockSuggestion);
       mockExecutor.execute.mockResolvedValue({
         stdout: 'file1.txt\nfile2.txt',
         stderr: '',
@@ -181,7 +179,7 @@ describe('TerminalPrompt', () => {
 
       await terminalPrompt.start();
 
-      expect(mockAIClient.getCommandSuggestion).toHaveBeenCalledWith(
+      expect(mockAIProvider.getCommandSuggestion).toHaveBeenCalledWith(
         'show me files',
         'Test context'
       );
@@ -198,7 +196,7 @@ describe('TerminalPrompt', () => {
         dangerous: true,
       };
 
-      mockAIClient.getCommandSuggestion.mockResolvedValue(mockSuggestion);
+      mockAIProvider.getCommandSuggestion.mockResolvedValue(mockSuggestion);
 
       (prompts as any)
         .mockResolvedValueOnce({ input: 'delete all files' })
@@ -222,7 +220,7 @@ describe('TerminalPrompt', () => {
         dangerous: false,
       };
 
-      mockAIClient.getCommandSuggestion.mockResolvedValue(mockSuggestion);
+      mockAIProvider.getCommandSuggestion.mockResolvedValue(mockSuggestion);
       mockExecutor.execute.mockResolvedValue({
         stdout: '',
         stderr: 'command not found',
@@ -251,7 +249,7 @@ describe('TerminalPrompt', () => {
         dangerous: false,
       };
 
-      mockAIClient.getCommandSuggestion.mockResolvedValue(mockSuggestion);
+      mockAIProvider.getCommandSuggestion.mockResolvedValue(mockSuggestion);
 
       (prompts as any)
         .mockResolvedValueOnce({ input: 'say test' })
@@ -267,7 +265,7 @@ describe('TerminalPrompt', () => {
     });
 
     it('should handle AI client errors', async () => {
-      mockAIClient.getCommandSuggestion.mockRejectedValue(
+      mockAIProvider.getCommandSuggestion.mockRejectedValue(
         new Error('API error')
       );
 
@@ -290,7 +288,7 @@ describe('TerminalPrompt', () => {
         dangerous: false,
       };
 
-      mockAIClient.getCommandSuggestion.mockResolvedValue(mockSuggestion);
+      mockAIProvider.getCommandSuggestion.mockResolvedValue(mockSuggestion);
 
       (prompts as any)
         .mockResolvedValueOnce({ input: 'where am i' })
@@ -317,7 +315,7 @@ describe('TerminalPrompt', () => {
         dangerous: false,
       };
 
-      mockAIClient.getCommandSuggestion.mockResolvedValue(mockSuggestion);
+      mockAIProvider.getCommandSuggestion.mockResolvedValue(mockSuggestion);
       mockExecutor.execute.mockResolvedValue({
         stdout: 'hello',
         stderr: '',

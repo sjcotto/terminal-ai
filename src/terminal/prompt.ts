@@ -1,17 +1,17 @@
 import prompts from 'prompts';
 import chalk from 'chalk';
 import ora from 'ora';
-import { AIClient } from '../ai/client.js';
+import { AIProvider } from '../ai/client.js';
 import { CommandExecutor } from './executor.js';
 import { getSystemContext } from '../utils/context.js';
 
 export class TerminalPrompt {
-  private aiClient: AIClient;
+  private aiClient: AIProvider;
   private executor: CommandExecutor;
   private isRunning: boolean = false;
 
-  constructor(apiKey: string) {
-    this.aiClient = new AIClient(apiKey);
+  constructor(aiProvider: AIProvider) {
+    this.aiClient = aiProvider;
     this.executor = new CommandExecutor();
   }
 
