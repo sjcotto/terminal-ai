@@ -7,6 +7,7 @@ A CLI tool that transforms your terminal experience by letting you talk to AI in
 - **Natural Language Interface**: Describe what you want to do instead of remembering complex commands
 - **Multiple AI Providers**: Choose between cloud (Anthropic Claude) or local (Ollama) AI models
 - **AI-Powered Command Generation**: Uses advanced AI to understand your intent and generate appropriate commands
+- **MCP Tool Support**: Integrate with Model Context Protocol servers for filesystem, git, databases, and more
 - **Safety First**: Shows you the command before execution and asks for confirmation
 - **Context Aware**: Understands your current directory and system environment
 - **Conversation History**: Maintains context across your session for follow-up requests
@@ -158,31 +159,130 @@ For best results with terminal commands, use code-focused models:
 - `exit` or `quit`: Exit the terminal
 - `clear`: Clear conversation history
 
+## 🔧 MCP (Model Context Protocol) Support
+
+MCP enables the AI to use external tools and access various data sources through standardized servers. This significantly enhances the AI's capabilities beyond just generating shell commands.
+
+### What is MCP?
+
+MCP is Anthropic's open protocol that allows AI assistants to securely connect to external tools and data sources. Think of it as giving your AI access to a toolbox of specialized capabilities.
+
+### Enabling MCP
+
+1. Set the environment variable:
+```bash
+export ENABLE_MCP=true
+```
+
+2. Configure MCP servers (choose one method):
+
+**Method A: Quick Enable (Built-in servers)**
+```bash
+export MCP_FILESYSTEM_ENABLED=true  # File operations
+export MCP_GIT_ENABLED=true         # Git operations
+```
+
+**Method B: Custom Configuration File**
+
+Create `mcp.json` in your project root or `~/.terminal-ai/mcp.json`:
+
+```json
+{
+  "servers": [
+    {
+      "name": "filesystem",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/allowed/path"]
+    },
+    {
+      "name": "git",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"]
+    },
+    {
+      "name": "postgres",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"]
+    }
+  ]
+}
+```
+
+### Available MCP Servers
+
+Popular MCP servers you can use:
+
+- **@modelcontextprotocol/server-filesystem** - File read/write operations
+- **@modelcontextprotocol/server-git** - Git repository operations
+- **@modelcontextprotocol/server-postgres** - PostgreSQL database queries
+- **@modelcontextprotocol/server-sqlite** - SQLite database operations
+- **@modelcontextprotocol/server-brave-search** - Web search
+- **@modelcontextprotocol/server-puppeteer** - Browser automation
+
+[Browse more MCP servers](https://github.com/modelcontextprotocol/servers)
+
+### Example Usage with MCP
+
+With MCP enabled, the AI can:
+
+```bash
+You: "Read the package.json file and tell me what dependencies we have"
+# AI uses filesystem MCP tool to read the file, then answers
+
+You: "Check the git history for changes to index.ts"
+# AI uses git MCP tool to query git log
+
+You: "Query the users table in our database"
+# AI uses postgres MCP tool to run the query
+```
+
+### How It Works
+
+1. When you ask a question, the AI determines if it needs MCP tools
+2. It calls the appropriate MCP server tool (e.g., read_file, git_log)
+3. Gets the result from the tool
+4. Uses that information to generate a better command or answer
+5. Shows you the final command suggestion
+
+### Security
+
+- MCP tools run in isolated processes
+- You control which servers are enabled
+- All tool calls are visible to you
+- Commands still require your confirmation before execution
+
 ## 🏗️ Architecture
 
 ```
 terminal-ai/
 ├── src/
-│   ├── index.ts                      # Entry point with provider selection
+│   ├── index.ts                          # Entry point with provider selection
 │   ├── ai/
-│   │   ├── provider.ts              # AI provider interface
-│   │   ├── anthropic-provider.ts    # Anthropic/Claude implementation
-│   │   ├── ollama-provider.ts       # Ollama implementation
-│   │   ├── factory.ts               # Provider factory
-│   │   ├── client.ts                # Re-exports for compatibility
-│   │   ├── client.test.ts           # Anthropic provider tests
-│   │   └── ollama-provider.test.ts  # Ollama provider tests
+│   │   ├── provider.ts                  # AI provider interface
+│   │   ├── anthropic-provider.ts        # Anthropic/Claude implementation
+│   │   ├── anthropic-mcp-provider.ts    # Anthropic with MCP support
+│   │   ├── ollama-provider.ts           # Ollama implementation
+│   │   ├── factory.ts                   # Provider factory
+│   │   ├── client.ts                    # Re-exports for compatibility
+│   │   ├── client.test.ts               # Anthropic provider tests
+│   │   └── ollama-provider.test.ts      # Ollama provider tests
+│   ├── mcp/
+│   │   ├── manager.ts                   # MCP client manager
+│   │   ├── manager.test.ts              # Manager tests
+│   │   ├── config.ts                    # MCP configuration loader
+│   │   └── config.test.ts               # Config tests
 │   ├── terminal/
-│   │   ├── prompt.ts                # Interactive prompt handler
-│   │   ├── prompt.test.ts           # Prompt tests
-│   │   ├── executor.ts              # Command executor
-│   │   └── executor.test.ts         # Executor tests
+│   │   ├── prompt.ts                    # Interactive prompt handler
+│   │   ├── prompt.test.ts               # Prompt tests
+│   │   ├── executor.ts                  # Command executor
+│   │   └── executor.test.ts             # Executor tests
 │   └── utils/
-│       ├── context.ts               # System context gathering
-│       └── context.test.ts          # Context tests
+│       ├── context.ts                   # System context gathering
+│       └── context.test.ts              # Context tests
+├── mcp.example.json                      # Example MCP configuration
 ├── package.json
 ├── tsconfig.json
-└── vitest.config.ts                 # Test configuration
+└── vitest.config.ts                     # Test configuration
 ```
 
 ### Provider System

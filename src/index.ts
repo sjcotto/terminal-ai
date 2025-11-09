@@ -3,6 +3,8 @@
 import { TerminalPrompt } from './terminal/prompt.js';
 import { createAIProvider, getConfigFromEnv } from './ai/client.js';
 import { OllamaProvider } from './ai/client.js';
+import { MCPManager } from './mcp/manager.js';
+import { getMCPServers } from './mcp/config.js';
 import chalk from 'chalk';
 
 async function main() {
@@ -21,6 +23,31 @@ async function main() {
 
   // Create AI provider
   const aiProvider = createAIProvider(config);
+
+  // Initialize MCP if enabled
+  if (config.enableMCP && aiProvider.setMCPManager) {
+    try {
+      const mcpServers = await getMCPServers();
+      if (mcpServers.length > 0) {
+        const mcpManager = new MCPManager(mcpServers);
+        await mcpManager.initialize();
+        aiProvider.setMCPManager(mcpManager);
+
+        const connectedServers = mcpManager.getConnectedServers();
+        if (connectedServers.length > 0) {
+          console.log(chalk.green(`\n✓ Connected to ${connectedServers.length} MCP server(s): ${connectedServers.join(', ')}`));
+          const tools = mcpManager.getAvailableTools();
+          console.log(chalk.gray(`  Available tools: ${tools.length}`));
+        } else {
+          console.log(chalk.yellow('\n⚠ MCP enabled but no servers connected'));
+        }
+      } else {
+        console.log(chalk.yellow('\n⚠ MCP enabled but no servers configured'));
+      }
+    } catch (error: any) {
+      console.error(chalk.yellow(`\n⚠ MCP initialization failed: ${error.message}`));
+    }
+  }
 
   // If using Ollama, check if it's available
   if (config.provider === 'ollama') {
